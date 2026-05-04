@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0b0b10">
+<title>翻訳</title>
+<link rel="apple-touch-icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><rect width='180' height='180' rx='40' fill='%230b0b10'/><text x='50%25' y='58%25' text-anchor='middle' font-size='110' fill='white' font-family='-apple-system'>訳</text></svg>">
+<style>
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;background:#0b0b10;color:#f4f4f7;font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans",sans-serif;overscroll-behavior:none;}
+  body{min-height:100dvh;display:flex;flex-direction:column;padding:env(safe-area-inset-top) 16px env(safe-area-inset-bottom);}
+  header{display:flex;align-items:center;gap:8px;padding:8px 0 12px;}
+  header h1{font-size:15px;margin:0;flex:1;color:#9aa0aa;font-weight:500;letter-spacing:.05em;}
+  header button{background:none;border:none;color:#9aa0aa;font-size:22px;padding:6px 8px;}
+  .lang-row{display:flex;gap:8px;align-items:stretch;margin-bottom:14px;}
+  .lang-row select{flex:1;background:#1c1c24;color:#fff;border:1px solid #2a2a36;border-radius:12px;padding:12px;font-size:15px;-webkit-appearance:none;appearance:none;}
+  .lang-row .swap{width:46px;background:#1c1c24;border:1px solid #2a2a36;border-radius:12px;color:#9aa0aa;font-size:18px;}
+  .panel{background:#16161e;border:1px solid #24242e;border-radius:14px;padding:14px 16px;margin-bottom:12px;min-height:64px;position:relative;}
+  .panel .label{font-size:11px;color:#6b6f7a;letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px;}
+  .panel .text{font-size:18px;line-height:1.5;white-space:pre-wrap;word-break:break-word;min-height:24px;}
+  .panel .text.placeholder{color:#4a4d57;}
+  .panel .actions{position:absolute;top:8px;right:8px;display:flex;gap:4px;}
+  .panel .actions button{background:none;border:none;color:#6b6f7a;font-size:16px;padding:6px 8px;border-radius:8px;}
+  .panel .actions button:active{background:#24242e;color:#fff;}
+  .translation .text{font-size:22px;font-weight:500;color:#fff;}
+  .mic-wrap{margin-top:auto;display:flex;flex-direction:column;align-items:center;padding:18px 0 8px;}
+  .mic{width:96px;height:96px;border-radius:50%;border:none;background:#fff;color:#0b0b10;font-size:38px;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 30px rgba(255,255,255,.08);transition:transform .12s,background .15s;}
+  .mic:active{transform:scale(.94);}
+  .mic.rec{background:#ff3b30;color:#fff;animation:pulse 1s infinite;}
+  @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(255,59,48,.6);}50%{box-shadow:0 0 0 18px rgba(255,59,48,0);}}
+  .hint{color:#6b6f7a;font-size:12px;margin-top:10px;text-align:center;letter-spacing:.05em;}
+  .status{position:fixed;top:env(safe-area-inset-top);left:0;right:0;text-align:center;font-size:12px;color:#9aa0aa;padding:6px;background:rgba(11,11,16,.9);z-index:10;transform:translateY(-100%);transition:transform .25s;}
+  .status.show{transform:translateY(0);}
+  .status.err{color:#ff8a82;}
+  dialog{background:#16161e;color:#fff;border:1px solid #24242e;border-radius:16px;padding:20px;max-width:340px;width:90%;}
+  dialog::backdrop{background:rgba(0,0,0,.6);}
+  dialog h2{margin-top:0;font-size:17px;}
+  dialog label{display:block;margin:14px 0 6px;font-size:12px;color:#9aa0aa;}
+  dialog input{width:100%;background:#0b0b10;color:#fff;border:1px solid #2a2a36;border-radius:10px;padding:10px;font-size:14px;font-family:ui-monospace,monospace;}
+  dialog .row{display:flex;gap:8px;margin-top:18px;}
+  dialog button{flex:1;padding:10px;border-radius:10px;border:none;font-size:15px;font-weight:600;}
+  dialog button.primary{background:#0a84ff;color:#fff;}
+  dialog button.ghost{background:#2a2a36;color:#fff;}
+</style>
+</head>
+<body>
+<div id="status" class="status"></div>
+<header>
+  <h1>TRANSLATE</h1>
+  <button id="settingsBtn" aria-label="settings">⚙</button>
+</header>
+
+<div class="lang-row">
+  <select id="srcLang">
+    <option value="auto" selected>自動検出</option>
+    <option value="ja">日本語</option>
+    <option value="en">English</option>
+    <option value="zh">中文</option>
+    <option value="ko">한국어</option>
+    <option value="vi">Tiếng Việt</option>
+    <option value="es">Español</option>
+    <option value="pt">Português</option>
+    <option value="tl">Tagalog</option>
+    <option value="fr">Français</option>
+    <option value="de">Deutsch</option>
+  </select>
+  <button class="swap" id="swap" aria-label="swap">⇄</button>
+  <select id="dstLang">
+    <option value="ja" selected>日本語</option>
+    <option value="en">English</option>
+    <option value="zh">中文</option>
+    <option value="ko">한국어</option>
+    <option value="vi">Tiếng Việt</option>
+    <option value="es">Español</option>
+    <option value="pt">Português</option>
+    <option value="tl">Tagalog</option>
+    <option value="fr">Français</option>
+    <option value="de">Deutsch</option>
+  </select>
+</div>
+
+<div class="panel source">
+  <div class="label">認識</div>
+  <div class="text placeholder" id="srcText">マイクを押して話してください</div>
+</div>
+
+<div class="panel translation">
+  <div class="label">翻訳</div>
+  <div class="text placeholder" id="dstText">—</div>
+  <div class="actions">
+    <button id="speakBtn" aria-label="speak">🔊</button>
+    <button id="copyBtn" aria-label="copy">⎘</button>
+  </div>
+</div>
+
+<div class="mic-wrap">
+  <button class="mic" id="mic" aria-label="record">●</button>
+  <div class="hint">タップで録音開始/停止</div>
+</div>
+
+<dialog id="settings">
+  <h2>設定</h2>
+  <label>Groq API Key (Whisper)</label>
+  <input id="groqKey" type="password" autocomplete="off" placeholder="gsk_...">
+  <label>Gemini API Key (翻訳)</label>
+  <input id="gemKey" type="password" autocomplete="off" placeholder="AIza...">
+  <label>翻訳モデル</label>
+  <select id="model" style="width:100%;background:#0b0b10;color:#fff;border:1px solid #2a2a36;border-radius:10px;padding:10px;font-size:14px;">
+    <option value="gemini-2.5-pro">Gemini 2.5 Pro (精度優先)</option>
+    <option value="gemini-2.5-flash">Gemini 2.5 Flash (速度優先)</option>
+  </select>
+  <div class="row">
+    <button class="ghost" id="cancelSet">キャンセル</button>
+    <button class="primary" id="saveSet">保存</button>
+  </div>
+</dialog>
+
+<script>
+const LS = {
+  groq: 'tr_groq', gem: 'tr_gem', model: 'tr_model',
+  src: 'tr_src', dst: 'tr_dst'
+};
+
+// URL フラグメントからキーを取り込み（初回ペーストレス起動用）
+(function ingestFromHash(){
+  if(!location.hash) return;
+  const p = new URLSearchParams(location.hash.slice(1));
+  if(p.get('groq')) localStorage.setItem(LS.groq, p.get('groq'));
+  if(p.get('gem'))  localStorage.setItem(LS.gem,  p.get('gem'));
+  if(p.get('model'))localStorage.setItem(LS.model,p.get('model'));
+  history.replaceState(null,'',location.pathname); // フラグメント消去
+})();
+
+const $ = id => document.getElementById(id);
+const statusEl = $('status');
+let statusTimer;
+function showStatus(msg, err=false){
+  statusEl.textContent = msg;
+  statusEl.classList.toggle('err', err);
+  statusEl.classList.add('show');
+  clearTimeout(statusTimer);
+  statusTimer = setTimeout(()=>statusEl.classList.remove('show'), err?4000:1800);
+}
+
+// 設定 UI
+const settings = $('settings');
+$('settingsBtn').onclick = ()=>{
+  $('groqKey').value = localStorage.getItem(LS.groq) || '';
+  $('gemKey').value  = localStorage.getItem(LS.gem)  || '';
+  $('model').value   = localStorage.getItem(LS.model) || 'gemini-2.5-pro';
+  settings.showModal();
+};
+$('cancelSet').onclick = e=>{e.preventDefault();settings.close();};
+$('saveSet').onclick   = e=>{
+  e.preventDefault();
+  localStorage.setItem(LS.groq, $('groqKey').value.trim());
+  localStorage.setItem(LS.gem,  $('gemKey').value.trim());
+  localStorage.setItem(LS.model,$('model').value);
+  settings.close();
+  showStatus('保存しました');
+};
+
+// 言語選択の永続化
+const srcSel = $('srcLang'), dstSel = $('dstLang');
+srcSel.value = localStorage.getItem(LS.src) || 'auto';
+dstSel.value = localStorage.getItem(LS.dst) || 'ja';
+srcSel.onchange = ()=>localStorage.setItem(LS.src, srcSel.value);
+dstSel.onchange = ()=>localStorage.setItem(LS.dst, dstSel.value);
+$('swap').onclick = ()=>{
+  if(srcSel.value==='auto'){ showStatus('自動検出中はスワップ不可',true); return; }
+  const t = srcSel.value; srcSel.value = dstSel.value; dstSel.value = t;
+  localStorage.setItem(LS.src,srcSel.value); localStorage.setItem(LS.dst,dstSel.value);
+};
+
+// 録音 + Groq Whisper
+const mic = $('mic');
+let mediaRec, chunks=[], rec=false, stream;
+mic.onclick = async ()=>{
+  if(!localStorage.getItem(LS.groq) || !localStorage.getItem(LS.gem)){
+    showStatus('設定で API キーを入力',true);
+    settings.showModal(); return;
+  }
+  if(!rec){
+    try{
+      stream = await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true}});
+    }catch(e){ showStatus('マイク許可が必要',true); return; }
+    const mime = MediaRecorder.isTypeSupported('audio/mp4') ? 'audio/mp4'
+              : MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : '';
+    mediaRec = new MediaRecorder(stream, mime?{mimeType:mime}:undefined);
+    chunks = [];
+    mediaRec.ondataavailable = e => e.data.size && chunks.push(e.data);
+    mediaRec.onstop = onRecordStop;
+    mediaRec.start();
+    rec = true; mic.classList.add('rec'); mic.textContent='■';
+    showStatus('録音中...');
+  } else {
+    mediaRec.stop();
+    stream.getTracks().forEach(t=>t.stop());
+    rec = false; mic.classList.remove('rec'); mic.textContent='●';
+  }
+};
+
+async function onRecordStop(){
+  const blob = new Blob(chunks, {type: mediaRec.mimeType || 'audio/mp4'});
+  if(blob.size < 800){ showStatus('音声が短すぎます',true); return; }
+  showStatus('文字起こし中...');
+  try{
+    const text = await groqTranscribe(blob);
+    setSrc(text);
+    if(!text.trim()){ showStatus('無音/認識不可',true); return; }
+    showStatus('翻訳中...');
+    const tr = await geminiTranslate(text, srcSel.value, dstSel.value);
+    setDst(tr);
+    showStatus('完了');
+    speak(tr, dstSel.value);
+  }catch(e){
+    console.error(e);
+    showStatus('エラー: '+e.message, true);
+  }
+}
+
+async function groqTranscribe(blob){
+  const ext = (blob.type.includes('mp4')?'m4a':'webm');
+  const fd = new FormData();
+  fd.append('file', blob, 'audio.'+ext);
+  fd.append('model', 'whisper-large-v3');
+  fd.append('response_format', 'json');
+  fd.append('temperature', '0');
+  if(srcSel.value !== 'auto') fd.append('language', srcSel.value);
+  fd.append('prompt', '医療・歯科・日常会話を含む自然な発話。');
+  const r = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
+    method:'POST',
+    headers:{'Authorization':'Bearer '+localStorage.getItem(LS.groq)},
+    body: fd
+  });
+  if(!r.ok) throw new Error('Groq '+r.status+' '+(await r.text()).slice(0,120));
+  const j = await r.json();
+  return (j.text||'').trim();
+}
+
+async function geminiTranslate(text, src, dst){
+  const model = localStorage.getItem(LS.model) || 'gemini-2.5-pro';
+  const langName = {ja:'日本語',en:'English',zh:'中文',ko:'한국어',vi:'Tiếng Việt',es:'Español',pt:'Português',tl:'Tagalog',fr:'Français',de:'Deutsch'};
+  const srcLabel = src==='auto' ? '入力言語を自動判定し' : `${langName[src]||src}から`;
+  const dstLabel = langName[dst] || dst;
+  const prompt = `あなたは正確で自然な翻訳者です。${srcLabel}${dstLabel}に翻訳してください。
+- 訳文のみを出力（前置き・解説・引用符なし）
+- 固有名詞・医療/歯科専門用語は適切に保持
+- 話者の口調を自然に再現
+
+原文: ${text}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${localStorage.getItem(LS.gem)}`;
+  const r = await fetch(url, {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({
+      contents:[{parts:[{text:prompt}]}],
+      generationConfig:{temperature:0.2}
+    })
+  });
+  if(!r.ok) throw new Error('Gemini '+r.status+' '+(await r.text()).slice(0,120));
+  const j = await r.json();
+  const out = j.candidates?.[0]?.content?.parts?.map(p=>p.text).join('') || '';
+  return out.trim();
+}
+
+function setSrc(t){ const el=$('srcText'); el.textContent=t||'—'; el.classList.toggle('placeholder',!t); }
+function setDst(t){ const el=$('dstText'); el.textContent=t||'—'; el.classList.toggle('placeholder',!t); }
+
+$('speakBtn').onclick = ()=>{
+  const t = $('dstText').textContent;
+  if(t && t!=='—') speak(t, dstSel.value);
+};
+$('copyBtn').onclick = async ()=>{
+  const t = $('dstText').textContent;
+  if(t && t!=='—'){
+    try{ await navigator.clipboard.writeText(t); showStatus('コピー完了'); }
+    catch{ showStatus('コピー失敗',true); }
+  }
+};
+
+const ttsLang = {ja:'ja-JP',en:'en-US',zh:'zh-CN',ko:'ko-KR',vi:'vi-VN',es:'es-ES',pt:'pt-BR',tl:'fil-PH',fr:'fr-FR',de:'de-DE'};
+function speak(text, lang){
+  if(!('speechSynthesis' in window)) return;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = ttsLang[lang] || lang;
+  u.rate = 0.95;
+  speechSynthesis.speak(u);
+}
+</script>
+</body>
+</html>
