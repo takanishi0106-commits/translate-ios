@@ -226,7 +226,7 @@ async function groqTranscribe(blob){
   const ext = (blob.type.includes('mp4')?'m4a':'webm');
   const fd = new FormData();
   fd.append('file', blob, 'audio.'+ext);
-  fd.append('model', 'whisper-large-v3');
+  fd.append('model', 'whisper-large-v3-turbo');
   fd.append('response_format', 'json');
   fd.append('temperature', '0');
   if(srcSel.value !== 'auto') fd.append('language', srcSel.value);
