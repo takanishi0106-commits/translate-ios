@@ -222,18 +222,18 @@ async function onRecordStop(){
   }
 }
 
-// 言語別 prompt（純粋に1言語のみ。英語混入で音声まで英語化けする事故あり 2026-05-04）
+// 言語別 prompt（1 言語のみ・他言語混入禁止。短く保つ＝224 token 制限）
 const PROMPT_BY_LANG = {
-  ja: '日本語の歯科診療と日常会話。固有名詞: アーツ歯科、KOデンタル、ササキ、ChieSudoh、YaeKobayashi。歯科用語: 矯正、補綴、咬合、インプラント、根管、抜歯、麻酔、金属冠、ジルコニア、セラミック、義歯、ブリッジ、クラウン、根管治療、フッ素、レントゲン、口腔外科、保険適用、自費診療、被せ物、詰め物。一般用語: コスト、プロンプト、API、Whisper、Groq、Gemini、Claude、ChatGPT。',
-  en: 'Conversational English in a dental clinic context, including medical terminology and patient communication.',
-  zh: '牙科诊所的中文对话,包含医学术语与患者沟通。',
-  ko: '치과 진료실의 한국어 대화. 의료 용어와 환자 소통.',
-  vi: 'Cuộc trò chuyện tiếng Việt tại phòng khám nha khoa, bao gồm thuật ngữ y khoa.',
-  es: 'Conversación en español en una clínica dental, con terminología médica.',
-  pt: 'Conversa em português em uma clínica odontológica, com terminologia médica.',
+  ja: '日本語の歯科診療と日常の会話。矯正、補綴、咬合、インプラント、根管、抜歯、麻酔、義歯、ブリッジ、クラウン、フッ素、被せ物、詰め物。',
+  en: 'English conversation in a dental clinic.',
+  zh: '牙科诊所的中文对话。',
+  ko: '치과 한국어 대화.',
+  vi: 'Cuộc trò chuyện tiếng Việt tại phòng khám nha khoa.',
+  es: 'Conversación en español en una clínica dental.',
+  pt: 'Conversa em português em uma clínica odontológica.',
   tl: 'Pag-uusap sa Tagalog sa isang dental clinic.',
-  fr: 'Conversation en français dans une clinique dentaire, terminologie médicale incluse.',
-  de: 'Deutsche Konversation in einer Zahnarztpraxis, medizinische Fachbegriffe.'
+  fr: 'Conversation en français dans une clinique dentaire.',
+  de: 'Deutsche Konversation in einer Zahnarztpraxis.'
 };
 
 // Whisper 誤認識の後処理テーブル（Mac config 流用 + 歯科向け追加）
@@ -267,10 +267,12 @@ async function groqTranscribe(blob){
   fd.append('model', localStorage.getItem('tr_whisper_model') || 'whisper-large-v3');
   fd.append('response_format', 'json');
   fd.append('temperature', '0');
-  // language 固定（auto 時は ja でバイアス、純日本語環境想定）
-  const lang = srcSel.value === 'auto' ? 'ja' : srcSel.value;
-  fd.append('language', lang);
-  fd.append('prompt', PROMPT_BY_LANG[lang] || PROMPT_BY_LANG.ja);
+  // auto なら language 指定せず Whisper に判定させる。明示選択時のみ固定
+  const sel = srcSel.value;
+  if(sel !== 'auto') fd.append('language', sel);
+  // prompt は auto/ja 時は日本語、それ以外は対応言語のみ。英語混入は事故源なので避ける
+  const promptLang = sel === 'auto' ? 'ja' : sel;
+  if(PROMPT_BY_LANG[promptLang]) fd.append('prompt', PROMPT_BY_LANG[promptLang]);
   const r = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
     method:'POST',
     headers:{'Authorization':'Bearer '+localStorage.getItem(LS.groq)},
